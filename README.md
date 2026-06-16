@@ -8,7 +8,6 @@ A lightweight, high-performance production-ready REST API boilerplate built with
 [![Build Status](https://img.shields.io/github/actions/workflow/status/XaiPhyr/rdev-go-api-template/go-lint.yml?label=lint&logo=github&logoColor=white&style=flat)](https://github.com/XaiPhyr/rdev-go-api-template/actions)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/XaiPhyr/rdev-go-api-template/go-cyclo.yml?label=cyclo&logo=github&logoColor=white&style=flat)](https://github.com/XaiPhyr/rdev-go-api-template/actions)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/XaiPhyr/rdev-go-api-template)](https://golang.org)
-[![License](https://img.shields.io/github/license/XaiPhyr/rdev-go-api-template)](LICENSE)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://linkedin.com/in/r-lozada)
 
 ---
@@ -19,7 +18,7 @@ A lightweight, high-performance production-ready REST API boilerplate built with
 - **ORM:** [Bun](https://github.com/uptrace/bun) - SQL-first ORM for Go supporting PostgreSQL, MySQL, and SQLite.
 - **Database:** PostgreSQL (Default)
 - **Caching/Session:** Redis (Optional integration setup ready)
-- **Config Management:** Env-based or Viper/Godotenv
+- **Config Management:** YAML-based
 
 ---
 
@@ -148,4 +147,4 @@ Requests follow a strict, unidirectional path down the stack to ensure predictab
 
 ## 📜 License
 
-This project is licensed under the MIT License - see the [LICENSE](https://www.google.com/search?q=LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/XaiPhyr/rdev-go-api-template?tab=MIT-1-ov-file) file for details.
