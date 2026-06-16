@@ -1,0 +1,53 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "go",
+			"label": "run test",
+			"command": "test",
+			"args": [
+				"./internal/..."
+			],
+			"problemMatcher": [
+				"$go"
+			],
+			"group": "test",
+			"detail": "cd d:\\MY CODES\\rdev-go-api-template; go test ./internal/..."
+		},
+		{
+			"type": "shell",
+			"label": "run gosec",
+			"command": "gosec ./...",
+			"options": {
+				"cwd": "d:\\MY CODES\\rdev-go-api-template"
+			},
+			"problemMatcher": [],
+			"detail": "Runs security code analysis using gosec"
+		},
+		{
+			"type": "shell",
+			"label": "run gocyclo",
+			"command": "gocyclo -over 10 .",
+			"options": {
+				"cwd": "d:\\MY CODES\\rdev-go-api-template"
+			},
+			"problemMatcher": [],
+			"detail": "Finds functions with cyclomatic complexity over 10"
+		},
+		{
+			"label": "run all checks",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"run test",
+				"run gosec",
+				"run gocyclo"
+			],
+			"problemMatcher": [],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "Runs tests, gosec, and gocyclo sequentially"
+		}
+	]
+}

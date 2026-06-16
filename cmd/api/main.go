@@ -1,26 +1,16 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 
-	"github.com/XaiPhyr/rdev-go-auth/internal/config"
-	"github.com/XaiPhyr/rdev-go-auth/internal/server"
+	"github.com/XaiPhyr/rdev-go-api-template/internal/config"
+	"github.com/XaiPhyr/rdev-go-api-template/internal/server"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	arg := flag.String("env", "local", "Config environment [local]")
-	flag.Parse()
-
-	file := ""
-	switch *arg {
-	case "local":
-		file = "config.yaml"
-	}
-
-	cfg, err := config.LoadConfig(file)
+	cfg, err := config.LoadConfig("config.yaml")
 	if err != nil {
 		log.Println(fmt.Errorf("failed to load config: %w", err))
 		return
@@ -29,9 +19,13 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
+	router.MaxMultipartMemory = 8 << 20
 
 	db := config.ConnectDB(cfg.Database)
-	server.Container(router, db, cfg)
+	redis := config.ConnectRedis(cfg.Redis)
+	server.Container(router, db, redis, cfg)
 
-	router.Run(cfg.Server.Port)
+	if err := router.Run(cfg.Server.Port); err != nil {
+		log.Fatalf("failed to run server: %v", err)
+	}
 }

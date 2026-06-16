@@ -1,0 +1,30 @@
+name: Go Lint Pipeline
+on:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - "README.md"
+      - "**.md"
+      - ".github/**"
+
+permissions:
+  contents: read
+
+jobs:
+  golangci:
+    name: Run golangci-lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: "go.mod"
+
+      - name: Run Go Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12

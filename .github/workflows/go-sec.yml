@@ -1,0 +1,25 @@
+name: Go Security Scan Pipeline
+on:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - "README.md"
+      - "**.md"
+      - ".github/**"
+
+jobs:
+  tests:
+    name: Run gosec
+    runs-on: ubuntu-latest
+
+    env:
+      GO111MODULE: on
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: ./...

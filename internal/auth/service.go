@@ -2,43 +2,48 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"slices"
+	"strings"
 	"time"
 
-	"github.com/XaiPhyr/rdev-go-auth/internal/config"
-	"github.com/XaiPhyr/rdev-go-auth/internal/users"
+	"github.com/XaiPhyr/rdev-go-api-template/internal/config"
+	"github.com/XaiPhyr/rdev-go-api-template/internal/shared/email"
+	"github.com/XaiPhyr/rdev-go-api-template/internal/shared/helpers"
+	"github.com/XaiPhyr/rdev-go-api-template/internal/shared/models"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type AuthService struct {
-	r     *users.UserRepository
-	redis *redis.Client
+type AuthRepository interface {
+	GetUsernameOrEmail(ctx context.Context, username string) (*models.User, error)
+	Register(ctx context.Context, user *models.User) error
+	CheckUserPermission(ctx context.Context, userID int64, roleName string) ([]string, error)
+}
+
+type AuthService interface {
+	GenerateToken(userID int64) (string, error)
+	ParseToken(token string) (int64, error)
+	CanAccess(ctx context.Context, userID int64, requiredRole string) (bool, error)
+	Login(ctx context.Context, req LoginRequest) (string, error)
+	Register(ctx context.Context, req RegisterRequest) error
+}
+
+type service struct {
+	r     AuthRepository
 	c     *config.Config
+	es    email.EmailService
+	redis *redis.Client
 }
 
-func NewAuthService(r *users.UserRepository, c *config.Config) *AuthService {
-	return &AuthService{r: r, c: c}
+func NewAuthService(r AuthRepository, c *config.Config, es email.EmailService, redis *redis.Client) *service {
+	return &service{r: r, c: c, es: es, redis: redis}
 }
 
-func (s *AuthService) Login(ctx context.Context, username, password string) (string, error) {
-	user, err := s.r.GetUserByUsernameOrEmail(ctx, username)
-	if err != nil {
-		return "", err
-	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
-	if err != nil {
-		return "", err
-	}
-
-	return s.GenerateToken(user.ID)
-}
-
-func (s *AuthService) GenerateToken(userID int64) (string, error) {
+func (s *service) GenerateToken(userID int64) (string, error) {
 	jwtKey := []byte(s.c.JWTSecretKey)
 	claims := jwt.MapClaims{
 		"user_id": userID,
@@ -50,7 +55,7 @@ func (s *AuthService) GenerateToken(userID int64) (string, error) {
 	return token.SignedString(jwtKey)
 }
 
-func (s *AuthService) ParseToken(token string) (int64, error) {
+func (s *service) ParseToken(token string) (int64, error) {
 	jwtKey := []byte(s.c.JWTSecretKey)
 
 	t, err := jwt.Parse(token, func(t *jwt.Token) (any, error) {
@@ -73,8 +78,54 @@ func (s *AuthService) ParseToken(token string) (int64, error) {
 	return 0, jwt.ErrTokenInvalidClaims
 }
 
-func (s *AuthService) CanAccess(ctx context.Context, userID int64, requiredRole string) (bool, error) {
-	// when updating user_roles and user_groups delete cache after
+func (s *service) Login(ctx context.Context, req LoginRequest) (string, error) {
+	err := helpers.ValidateStruct(req)
+	if err != nil {
+		return "", fmt.Errorf("field missing %v", err)
+	}
+
+	username := helpers.CleanSpecialChars(strings.TrimSpace(req.Username))
+	user, err := s.r.GetUsernameOrEmail(ctx, username)
+	if err != nil {
+		return "", fmt.Errorf("no user found, %v", err)
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+	if err != nil {
+		return "", fmt.Errorf("incorrect password, %v", err)
+	}
+
+	return s.GenerateToken(user.ID)
+}
+
+func (s *service) Register(ctx context.Context, req RegisterRequest) error {
+	err := helpers.ValidateStruct(req)
+	if err != nil {
+		return fmt.Errorf("field missing %v", err)
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("password hash %v", err)
+	}
+
+	user := &models.User{
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Email:     req.Email,
+		Username:  req.Username,
+		Password:  string(passwordHash),
+	}
+
+	err = s.r.Register(ctx, user)
+	if err != nil {
+		return errors.New("unable to register")
+	}
+
+	return nil
+}
+
+func (s *service) CanAccess(ctx context.Context, userID int64, requiredRole string) (bool, error) {
 	cacheKey := fmt.Sprintf("user:perms:%d", userID)
 
 	existCount, err := s.redis.Exists(ctx, cacheKey).Result()
