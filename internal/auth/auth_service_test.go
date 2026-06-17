@@ -7,6 +7,7 @@ import (
 
 	"github.com/XaiPhyr/rdev-go-api-template/internal/auth"
 	"github.com/XaiPhyr/rdev-go-api-template/internal/config"
+	"github.com/XaiPhyr/rdev-go-api-template/internal/shared/email"
 	"github.com/XaiPhyr/rdev-go-api-template/internal/shared/models"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,8 +17,9 @@ var testAuthSvc = NewTestAuth(testAuthRepo)
 
 func NewTestAuth(testAuthRepo *auth.MockAuthRepository) auth.AuthService {
 	config := &config.Config{JWTSecretKey: "rdev-go-api-template_jwt_key"}
+	es := &email.MockEmailService{}
 
-	return auth.NewAuthService(testAuthRepo, config, nil, nil)
+	return auth.NewAuthService(testAuthRepo, config, es, nil)
 }
 
 func TestAuthServiceLogin(t *testing.T) {

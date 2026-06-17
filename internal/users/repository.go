@@ -47,7 +47,7 @@ func (r *repository) ReadAll(ctx context.Context, q dto.Query) ([]models.User, i
 		Model(&users).
 		Limit(q.Limit).
 		Offset(q.Offset).
-		Order(q.OrderBy).
+		Order(q.Order).
 		WhereGroup("OR", func(sq *bun.SelectQuery) *bun.SelectQuery {
 			return sq.WhereOr("u.first_name ILIKE ?", search).
 				WhereOr("u.last_name ILIKE ?", search).

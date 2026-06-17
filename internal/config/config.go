@@ -18,8 +18,9 @@ type (
 	}
 
 	ServerConfig struct {
-		Port string `yaml:"port"`
-		Env  string `yaml:"env"`
+		Port    string `yaml:"port"`
+		Env     string `yaml:"env"`
+		Version string `yaml:"version"`
 	}
 
 	DBConfig struct {

@@ -25,7 +25,7 @@ func Container(r *gin.Engine, db *bun.DB, redis *redis.Client, cfg *config.Confi
 	authSvc := auth.NewAuthService(authRepo, cfg, emailSvc, redis)
 	userRepo := users.NewUserRepository(db)
 
-	apiVersion := r.Group("/api/v1")
+	apiVersion := r.Group(cfg.Server.Version)
 	apiVersion.Use(middleware.RateLimiter())
 
 	setupAuthRoutes(apiVersion, authSvc)

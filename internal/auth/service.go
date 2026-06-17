@@ -122,6 +122,12 @@ func (s *service) Register(ctx context.Context, req RegisterRequest) error {
 		return errors.New("unable to register")
 	}
 
+	go func(email string) {
+		if err := s.es.SendEmail(email); err != nil {
+			log.Printf("Failed to send email: %v", err)
+		}
+	}(req.Email)
+
 	return nil
 }
 

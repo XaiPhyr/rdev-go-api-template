@@ -7,10 +7,10 @@ import (
 )
 
 type Query struct {
-	Limit   int    `json:"limit" query:"limit"`
-	Offset  int    `json:"offset" query:"offset"`
-	OrderBy string `json:"order_by" query:"order_by"`
-	Search  string `json:"search" query:"search"`
+	Limit  int    `json:"limit" query:"limit"`
+	Offset int    `json:"offset" query:"offset"`
+	Order  string `json:"order" query:"order"`
+	Search string `json:"search" query:"search"`
 }
 
 type BaseFilters struct {
@@ -32,10 +32,10 @@ func (b BaseFilters) SanitizeQuery(allowedColumns []string) Query {
 	}
 
 	return Query{
-		Limit:   pageSize,
-		Offset:  (b.Page - 1) * pageSize,
-		OrderBy: b.validateSort(allowedColumns),
-		Search:  b.Search,
+		Limit:  pageSize,
+		Offset: (b.Page - 1) * pageSize,
+		Order:  b.validateSort(allowedColumns),
+		Search: b.Search,
 	}
 }
 

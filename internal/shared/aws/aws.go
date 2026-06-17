@@ -11,27 +11,43 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
+type S3API interface {
+	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+}
+
 type AWSService interface {
 	UploadToS3(ctx context.Context, key string, data []byte) (string, error)
 }
 
 type service struct {
-	s3Client *s3.Client
+	s3Client S3API
 	bucket   string
 	region   string
 }
 
-func NewAWSService(region, bucket string) (*service, error) {
+func WithS3Client(client S3API) func(*service) {
+	return func(s *service) {
+		s.s3Client = client
+	}
+}
+
+func NewAWSService(region, bucket string, opts ...func(*service)) (*service, error) {
 	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
 	if err != nil {
 		return nil, fmt.Errorf("unable to load SDK config: %w", err)
 	}
 
-	return &service{
+	svc := &service{
 		s3Client: s3.NewFromConfig(cfg),
 		bucket:   bucket,
 		region:   region,
-	}, nil
+	}
+
+	for _, opt := range opts {
+		opt(svc)
+	}
+
+	return svc, nil
 }
 
 func (s *service) UploadToS3(ctx context.Context, key string, data []byte) (string, error) {
