@@ -17,8 +17,8 @@ type GeneratorData struct {
 	Module  string
 }
 
-var DomainErr = errors.New("domain Already Exists")
-var FileErr = errors.New("file Already Exists")
+var ErrDomainExists = errors.New("domain Already Exists")
+var ErrFileExists = errors.New("file Already Exists")
 
 func main() {
 	domainFlag := flag.String("d", "", "Domain name")
@@ -42,7 +42,7 @@ func main() {
 
 	if err := runGenerator(*domainFlag, *fileFlag); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		if errors.Is(err, FileErr) || errors.Is(err, DomainErr) {
+		if errors.Is(err, ErrFileExists) || errors.Is(err, ErrDomainExists) {
 			os.Exit(1)
 		}
 		flag.Usage()

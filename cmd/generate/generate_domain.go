@@ -51,7 +51,7 @@ func cleanDomainName(name string) string {
 func createDomainDirectories(domain string) error {
 	dir := filepath.Join("internal", domain)
 	if info, err := os.Stat(dir); err == nil && info.IsDir() {
-		return DomainErr
+		return ErrDomainExists
 	}
 
 	if err := os.MkdirAll(dir, 0750); err != nil {
