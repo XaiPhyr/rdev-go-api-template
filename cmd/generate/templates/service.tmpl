@@ -1,0 +1,83 @@
+package {{ .Package }}
+
+import (
+	"context"
+
+	"{{ .Module }}/internal/audit_logs"
+	"{{ .Module }}/internal/shared/dto"
+	"{{ .Module }}/internal/shared/email"
+	"{{ .Module }}/internal/shared/models"
+	"github.com/redis/go-redis/v9"
+)
+
+type {{ .Domain }}Repository interface {
+	Create(ctx context.Context, item *models.{{ .Domain }}) error
+	ReadOne(ctx context.Context, uuid string) (*models.{{ .Domain }}, error)
+	ReadAll(ctx context.Context, q dto.Query) ([]models.{{ .Domain }}, int, error)
+	Update(ctx context.Context, item *models.{{ .Domain }}) error
+	Delete(ctx context.Context, uuid string) error
+}
+
+type {{ .Domain }}Service interface {
+	Create(ctx context.Context, req {{ .Domain }}Request) error
+	ReadOne(ctx context.Context, uuid string) (*models.{{ .Domain }}, error)
+	ReadAll(ctx context.Context, req dto.BaseFilters) ([]models.{{ .Domain }}, int, error)
+	Update(ctx context.Context, uuid string, req {{ .Domain }}Request) error
+	Delete(ctx context.Context, uuid string) error
+}
+
+type service struct {
+	r        {{ .Domain }}Repository
+	es       email.EmailService
+	redis    *redis.Client
+	auditLog audit_logs.AuditLogService
+}
+
+func New{{ .Domain }}Service(r {{ .Domain }}Repository, es email.EmailService, redis *redis.Client, auditLog audit_logs.AuditLogService) *service {
+	return &service{r: r, es: es, redis: redis, auditLog: auditLog}
+}
+
+func (s *service) Create(ctx context.Context, req {{ .Domain }}Request) error {
+	err := s.r.Create(ctx, req.ToModel(&models.{{ .Domain }}{}))
+
+	return err
+}
+
+func (s *service) ReadOne(ctx context.Context, uuid string) (*models.{{ .Domain }}, error) {
+	item, err := s.r.ReadOne(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	return item, nil
+}
+
+func (s *service) ReadAll(ctx context.Context, req dto.BaseFilters) ([]models.{{ .Domain }}, int, error) {
+	filters := req.SanitizeQuery([]string{"name", "price"})
+
+	items, total, err := s.r.ReadAll(ctx, filters)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return items, total, nil
+}
+
+func (s *service) Update(ctx context.Context, uuid string, req {{ .Domain }}Request) error {
+	item, err := s.r.ReadOne(ctx, uuid)
+	if err != nil {
+		return err
+	}
+
+	if err := s.r.Update(ctx, req.ToModel(item)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *service) Delete(ctx context.Context, uuid string) error {
+	err := s.r.Delete(ctx, uuid)
+
+	return err
+}

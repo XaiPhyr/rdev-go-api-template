@@ -1,0 +1,103 @@
+package {{ .Package }}
+
+import (
+	"net/http"
+
+	"{{ .Module }}/internal/shared/dto"
+	"{{ .Module }}/internal/shared/helpers"
+	"github.com/gin-gonic/gin"
+)
+
+type handler struct {
+    svc {{ .Domain}}Service
+}
+
+func New{{ .Domain }}Handler(svc {{ .Domain}}Service) *handler {
+    return &handler{svc: svc}
+}
+
+func (h *handler) Create(ctx *gin.Context) {
+    var req {{ .Domain }}Request
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": helpers.ParseValidationErr(err)})
+		return
+	}
+
+	err := h.svc.Create(ctx.Request.Context(), req)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{"message": "success"})
+}
+
+func (h *handler) ReadOne(ctx *gin.Context) {
+	uuid := ctx.Param("uuid")
+
+	if uuid == "" || len(uuid) < 36 {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid uuid"})
+		return
+	}
+
+	item, err := h.svc.ReadOne(ctx.Request.Context(), uuid)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "success", "data": item})
+}
+
+func (h *handler) ReadAll(ctx *gin.Context) {
+	var req dto.BaseFilters
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": helpers.ParseValidationErr(err)})
+		return
+	}
+
+	items, total, err := h.svc.ReadAll(ctx.Request.Context(), req)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "success", "total": total, "data": items})
+}
+
+func (h *handler) Update(ctx *gin.Context) {
+	uuid := ctx.Param("uuid")
+	if uuid == "" || len(uuid) < 36 {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid uuid"})
+		return
+	}
+
+	var req {{ .Domain }}Request
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": helpers.ParseValidationErr(err)})
+		return
+	}
+
+	if err := h.svc.Update(ctx.Request.Context(), uuid, req); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "success"})
+}
+
+func (h *handler) Delete(ctx *gin.Context) {
+	uuid := ctx.Param("uuid")
+
+	if uuid == "" || len(uuid) < 36 {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid uuid"})
+		return
+	}
+
+	if err := h.svc.Delete(ctx.Request.Context(), uuid); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "success"})
+}

@@ -1,0 +1,84 @@
+package {{ .Package }}
+
+import (
+    "context"
+	"time"
+
+	"{{ .Module }}/internal/shared/dto"
+	"{{ .Module }}/internal/shared/models"
+    "github.com/uptrace/bun"
+)
+
+type repository struct {
+	db *bun.DB
+}
+
+func New{{ .Domain }}Repository(db *bun.DB) *repository {
+	return &repository{db: db}
+}
+
+func (r *repository) Create(ctx context.Context, item *models.{{ .Domain }}) error {
+	_, err := r.db.NewInsert().
+		Model(&item).
+		Exec(ctx)
+
+	return err
+}
+
+func (r *repository) ReadOne(ctx context.Context, uuid string) (*models.{{ .Domain }}, error) {
+	item := new(models.{{ .Domain }})
+
+	err := r.db.NewSelect().
+		Model(item).
+		Where("uuid = ?", uuid).
+		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return item, nil
+}
+
+func (r *repository) ReadAll(ctx context.Context, q dto.Query) ([]models.{{ .Domain }}, int, error) {
+	var items []models.{{ .Domain }}
+	search := "%" + q.Search + "%"
+
+	total, err := r.db.NewSelect().
+		Model(&items).
+		Limit(q.Limit).
+		Offset(q.Offset).
+		Order(q.Order).
+		WhereGroup("OR", func(sq *bun.SelectQuery) *bun.SelectQuery {
+			return sq.WhereOr("u.first_name ILIKE ?", search).
+				WhereOr("u.last_name ILIKE ?", search).
+				WhereOr("u.email ILIKE ?", search)
+		}).
+		ScanAndCount(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return items, total, nil
+}
+
+func (r *repository) Update(ctx context.Context, item *models.{{ .Domain }}) error {
+	cols := []string{"first_name", "last_name", "addr1", "addr2", "city", "postal"}
+
+	_, err := r.db.NewUpdate().
+		Model(&item).
+		Column(cols...).
+		Set("u.updated_at = ?", time.Now()).
+		WherePK().
+		Exec(ctx)
+
+	return err
+}
+
+func (r *repository) Delete(ctx context.Context, uuid string) error {
+	_, err := r.db.NewDelete().
+		Model((*models.{{ .Domain }})(nil)).
+		Where("uuid = ?", uuid).
+		Exec(ctx)
+
+	return err
+}

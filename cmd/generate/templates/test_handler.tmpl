@@ -1,0 +1,82 @@
+package {{ .Package }}_test
+
+import (
+	"context"
+	"net/http"
+	"testing"
+
+	"{{ .Module }}/internal/auth"
+	"{{ .Module }}/internal/middleware"
+	"{{ .Module }}/internal/shared/testers"
+	"{{ .Module }}/internal/{{ .Package }}"
+	"github.com/gin-gonic/gin"
+)
+
+func Test{{ .Domain }}Handler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	mockSvc := &{{ .Package }}.Mock{{ .Domain }}Service{}
+	h := {{ .Package }}.New{{ .Domain }}Handler(mockSvc)
+
+	successParseToken := func(token string) (int64, error) {
+		return 42, nil
+	}
+	successCanAccess := func(ctx context.Context, userID int64, role string) (bool, error) {
+		return true, nil
+	}
+	authFunc := func(authSvc *auth.MockAuthService) gin.HandlerFunc {
+		return middleware.AuthRequired(authSvc)
+	}
+	permissionFunc := func(authSvc *auth.MockAuthService, requiredRole string) gin.HandlerFunc {
+		return middleware.PermissionRequired(authSvc, requiredRole)
+	}
+
+	tests := []struct {
+		name           string
+		method         string
+		routePath      string
+		url            string
+		requiredRole   string
+		tokenHeader    string
+		authFunc       func(authSvc *auth.MockAuthService) gin.HandlerFunc
+		permissionFunc func(authSvc *auth.MockAuthService, requiredRole string) gin.HandlerFunc
+		mockParseToken func(token string) (int64, error)
+		mockCanAccess  func(ctx context.Context, userID int64, role string) (bool, error)
+		body           any
+		handlerFunc    gin.HandlerFunc
+		expectedStatus int
+	}{
+		{
+			name:           "Create - Success",
+			method:         http.MethodPost,
+			routePath:      "/api/v1/{{ .Package }}",
+			url:            "/api/v1/{{ .Package }}",
+			requiredRole:   "{{ .Package }}:create",
+			tokenHeader:    "Bearer valid-token",
+			mockParseToken: successParseToken,
+			mockCanAccess:  successCanAccess,
+			body: {{ .Package }}.{{ .Domain }}Request{},
+			handlerFunc:    h.Create,
+			expectedStatus: http.StatusCreated,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testers.RunGin(t, testers.GinTestConfig{
+				Method:         tt.method,
+				RoutePath:      tt.routePath,
+				URL:            tt.url,
+				RequiredRole:   tt.requiredRole,
+				TokenHeader:    tt.tokenHeader,
+				AuthFunc:       tt.authFunc,
+				PermissionFunc: tt.permissionFunc,
+				MockParseToken: tt.mockParseToken,
+				MockCanAccess:  tt.mockCanAccess,
+				Body:           tt.body,
+				HandlerFunc:    tt.handlerFunc,
+				ExpectedStatus: tt.expectedStatus,
+			}, authFunc, permissionFunc)
+		})
+	}
+}

@@ -9,6 +9,9 @@ import (
 	"github.com/XaiPhyr/rdev-go-api-template/internal/middleware"
 	"github.com/XaiPhyr/rdev-go-api-template/internal/shared/email"
 	"github.com/XaiPhyr/rdev-go-api-template/internal/users"
+
+	// @inject:imports
+
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/uptrace/bun"
@@ -25,11 +28,14 @@ func Container(r *gin.Engine, db *bun.DB, redis *redis.Client, cfg *config.Confi
 	authSvc := auth.NewAuthService(authRepo, cfg, emailSvc, redis)
 	userRepo := users.NewUserRepository(db)
 
+	// @inject:repository
+
 	apiVersion := r.Group(cfg.Server.Version)
 	apiVersion.Use(middleware.RateLimiter())
 
 	setupAuthRoutes(apiVersion, authSvc)
-	setupUserRoutes(apiVersion, userRepo, authSvc, emailSvc, redis)
+	setupUserRoutes(apiVersion, userRepo, authSvc, emailSvc, redis, auditLogSvc)
+	// @inject:routes
 }
 
 func setupAuthRoutes(rg *gin.RouterGroup, authSvc auth.AuthService) {
@@ -39,8 +45,8 @@ func setupAuthRoutes(rg *gin.RouterGroup, authSvc auth.AuthService) {
 	rg.POST("/register", h.Register)
 }
 
-func setupUserRoutes(rg *gin.RouterGroup, repo users.UserRepository, authSvc auth.AuthService, es email.EmailService, redis *redis.Client) {
-	svc := users.NewUserService(repo, es, redis)
+func setupUserRoutes(rg *gin.RouterGroup, repo users.UserRepository, authSvc auth.AuthService, es email.EmailService, redis *redis.Client, auditLog audit_logs.AuditLogService) {
+	svc := users.NewUserService(repo, es, redis, auditLog)
 	h := users.NewUserHandler(svc)
 
 	route := rg.Group("/service_types")

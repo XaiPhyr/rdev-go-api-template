@@ -31,8 +31,10 @@ rdev-go-api-template/
 ├── cmd/                          # Application entry points
 │   ├── api/
 │   │   └── main.go               # Web API server entry point
-│   └── migration/
-│       └── main.go               # Database migration CLI entry point
+│   ├── migration/
+│   │   └── main.go               # Database migration CLI entry point
+│   └── generate/
+│       └── main.go               # Domain generator
 ├── internal/                     # Private application code (non-importable externally)
 │   ├── audit_logs/               # Audit logging domain components
 │   ├── auth/                     # Authentication & authorization domain components
@@ -49,7 +51,7 @@ rdev-go-api-template/
 │   │   └── routes.go             # Route grouping and engine setup
 │   ├── shared/                   # Cross-cutting concerns and shared helpers
 │   │   ├── aws/                  # AWS service integrations (S3, SES, etc.)
-│   │   ├── dto/                  # Shared Data Transfer Objects (Request/Response shapes)
+│   │   ├── dto/                  # Shared Data Transfer Objects (Filters/Queries)
 │   │   ├── email/                # Email dispatch utilities
 │   │   ├── helpers/              # Cryptography, string manipulation utilities
 │   │   ├── models/               # Shared Bun ORM database schemas
@@ -77,36 +79,51 @@ rdev-go-api-template/
 
 ### Prerequisites
 
-- Go `1.26` or higher
-- PostgreSQL instance running locally or via Docker
+* Go `1.26` or higher
+* PostgreSQL instance running locally or via Docker
 
 ### Local Installation
 
 1. **Clone the repository:**
 ```bash
-   git clone [https://github.com/XaiPhyr/rdev-go-api-template.git](https://github.com/XaiPhyr/rdev-go-api-template.git)
-   cd rdev-go-api-template
+git clone https://github.com/XaiPhyr/rdev-go-api-template.git
+cd rdev-go-api-template
 ```
 
 2. **Setup application configuration:**
 ```bash
-   cp config.sample.yaml config.yaml
+cp config.sample.yaml config.yaml
 ```
 Open `config.yaml` and fill in your local PostgreSQL credentials and server port configurations.
 
 3. **Download dependencies:**
 
 ```bash
-   go mod download
+go mod download
 ```
 
 4. **Run the application:**
 
 ```bash
-   go run cmd/api/main.go
+go run cmd/api/main.go
 ```
 
 The server should spin up by default on `http://localhost:8200`.
+
+5. **Build and use the domain generator:**
+You can compile the domain code-generation utility into a reusable binary for your specific operating system.
+* **On Linux / macOS:**
+```bash
+go build -o generate ./cmd/generate/main.go
+./generate -d orders
+```
+* **On Windows:**
+```bash
+go build -o generate.exe ./cmd/generate/main.go
+generate.exe -d orders
+```
+
+> 💡 **Tip:** Running this command automatically creates your new boilerplate domain logic, handles the core dependencies, and cleanly injects the necessary imports, repositories, and routes directly into `internal/server/routes.go`.
 
 ***
 
