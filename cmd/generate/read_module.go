@@ -34,6 +34,7 @@ func ReadModuleName() string {
 }
 
 func parseGoMod(path string) string {
+	// #nosec G304 -- Path is safe; internally generated via walking up working directory for go.mod
 	file, err := os.Open(path)
 	if err != nil {
 		fmt.Println("Error opening file:", err)

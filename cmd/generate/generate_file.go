@@ -35,7 +35,7 @@ func validateInput(domain, files string) error {
 func ensureDomainDir(domain string) error {
 	dir := filepath.Join("internal", strings.ToLower(domain))
 	if _, err := os.Stat(dir); err != nil {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0750); err != nil {
 			return fmt.Errorf("cannot proceed creating domain folder %v", err)
 		}
 	}
@@ -50,34 +50,48 @@ func processFile(domain, file string) error {
 
 	cap := strings.ToUpper(domain[0:1])
 	capitalizedDomain := fmt.Sprintf("%s%s", cap, domain[1:])
-	module := ""
-	if ReadModuleName() != "" {
-		module = ReadModuleName()
-	}
+
+	module := ReadModuleName()
 
 	data := GeneratorData{Package: domain, Domain: capitalizedDomain, Module: module}
 
+	return generateTargetFile(domain, file, &data)
+}
+
+func generateTargetFile(domain, file string, data *GeneratorData) error {
 	switch file {
 	case "handler", "service", "repository", "types":
-		GenerateAndParse(domain, "internal", fmt.Sprintf("%s.go", file), fmt.Sprintf("templates/%s.tmpl", file), &data)
+		return GenerateAndParse(domain, "internal", fmt.Sprintf("%s.go", file), fmt.Sprintf("templates/%s.tmpl", file), data)
 	case "models":
-		if err := ensureModelsDir(); err != nil {
-			return err
-		}
-		GenerateAndParse("", "internal/shared/models", fmt.Sprintf("%s.go", domain), "templates/models.tmpl", &data)
+		return generateModelsLayout(domain, data)
 	case "tests":
-		GenerateAndParse(domain, "internal", "mock.go", "templates/mock.tmpl", &data)
-		GenerateAndParse(domain, "internal", fmt.Sprintf("%s_handler_test.go", domain), "templates/test_handler.tmpl", &data)
-		GenerateAndParse(domain, "internal", fmt.Sprintf("%s_service_test.go", domain), "templates/test_service.tmpl", &data)
+		return generateTestLayouts(domain, data)
+	default:
+		return nil
 	}
+}
 
-	return nil
+func generateModelsLayout(domain string, data *GeneratorData) error {
+	if err := ensureModelsDir(); err != nil {
+		return err
+	}
+	return GenerateAndParse("", "internal/shared/models", fmt.Sprintf("%s.go", domain), "templates/models.tmpl", data)
+}
+
+func generateTestLayouts(domain string, data *GeneratorData) error {
+	if err := GenerateAndParse(domain, "internal", "mock.go", "templates/mock.tmpl", data); err != nil {
+		return err
+	}
+	if err := GenerateAndParse(domain, "internal", fmt.Sprintf("%s_handler_test.go", domain), "templates/test_handler.tmpl", data); err != nil {
+		return err
+	}
+	return GenerateAndParse(domain, "internal", fmt.Sprintf("%s_service_test.go", domain), "templates/test_service.tmpl", data)
 }
 
 func ensureModelsDir() error {
 	modelsDir := "internal/shared/models"
 	if _, err := os.Stat(modelsDir); err != nil {
-		if err := os.MkdirAll(modelsDir, 0755); err != nil {
+		if err := os.MkdirAll(modelsDir, 0750); err != nil {
 			return fmt.Errorf("cannot proceed creating models folder %v", err)
 		}
 	}

@@ -17,8 +17,8 @@ type GeneratorData struct {
 	Module  string
 }
 
-var DomainErr = errors.New("Domain Already Exists")
-var FileErr = errors.New("File Already Exists")
+var DomainErr = errors.New("domain Already Exists")
+var FileErr = errors.New("file Already Exists")
 
 func main() {
 	domainFlag := flag.String("d", "", "Domain name")
@@ -52,13 +52,13 @@ func main() {
 
 func validateFlags(domain, file string) error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("Error: missing arguments")
+		return fmt.Errorf("error: missing arguments")
 	}
 	if file != "" && domain == "" {
-		return fmt.Errorf("Error: domain name flag (-f) must have flag (-d)")
+		return fmt.Errorf("error: domain name flag (-f) must have flag (-d)")
 	}
 	if domain == "" {
-		return fmt.Errorf("Error: domain name flag (-d) is required")
+		return fmt.Errorf("error: domain name flag (-d) is required")
 	}
 	return nil
 }

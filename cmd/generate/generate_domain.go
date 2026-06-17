@@ -54,11 +54,11 @@ func createDomainDirectories(domain string) error {
 		return DomainErr
 	}
 
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return fmt.Errorf("cannot proceed creating domain folder %v", err)
 	}
 
-	if err := os.MkdirAll("internal/shared/models", 0755); err != nil {
+	if err := os.MkdirAll("internal/shared/models", 0750); err != nil {
 		return fmt.Errorf("cannot proceed creating models folder %v", err)
 	}
 
@@ -95,7 +95,9 @@ func generateDomainFiles(domain string, data *GeneratorData) {
 	}
 
 	for tmpPath, outputName := range templates {
-		GenerateAndParse(domain, "internal", outputName, tmpPath, data)
+		if err := GenerateAndParse(domain, "internal", outputName, tmpPath, data); err != nil {
+			fmt.Printf("expected no error, got %v", err)
+		}
 	}
 }
 

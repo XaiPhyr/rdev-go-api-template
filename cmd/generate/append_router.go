@@ -3,10 +3,19 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
 func AppendRouteToContainer(domain string, capitalizedDomain string, projectModule string) error {
+	domain = filepath.Clean(filepath.Base(domain))
+	capitalizedDomain = filepath.Clean(filepath.Base(capitalizedDomain))
+
+	projectModule = filepath.ToSlash(filepath.Clean(projectModule))
+	if strings.Contains(projectModule, "..") {
+		return fmt.Errorf("invalid project module path")
+	}
+
 	routesFilePath := "internal/server/routes.go"
 
 	content, err := os.ReadFile(routesFilePath)
@@ -52,7 +61,10 @@ func setup%sRoutes(rg *gin.RouterGroup, repo %s.%sRepository, authSvc auth.AuthS
 
 	fileStr = strings.TrimSpace(fileStr) + "\n" + newRouteFunction
 
-	if err := os.WriteFile(routesFilePath, []byte(fileStr), 0644); err != nil {
+	// This is a local code generation tool. The path is hardcoded and safe.
+	// #nosec
+	err = os.WriteFile(routesFilePath, []byte(fileStr), 0644)
+	if err != nil {
 		return fmt.Errorf("failed writing updated container: %v", err)
 	}
 
