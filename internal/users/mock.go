@@ -7,31 +7,31 @@ import (
 	"github.com/XaiPhyr/rdev-go-api-template/internal/shared/models"
 )
 
-type MockUsersService struct {
+type MockUserService struct {
 	// code here!
 }
 
-func (m *MockUsersService) Create(ctx context.Context, req UserRequest) error {
+func (m *MockUserService) Create(ctx context.Context, req UserRequest) error {
 	return nil
 }
 
-func (m *MockUsersService) ReadOne(ctx context.Context, uuid string) (*models.User, error) {
+func (m *MockUserService) ReadOne(ctx context.Context, uuid string) (*models.User, error) {
 	return nil, nil
 }
 
-func (m *MockUsersService) ReadAll(ctx context.Context, req dto.BaseFilters) ([]models.User, int, error) {
+func (m *MockUserService) ReadAll(ctx context.Context, req dto.BaseFilters) ([]models.User, int, error) {
 	return nil, 0, nil
 }
 
-func (m *MockUsersService) Update(ctx context.Context, uuid string, req UserRequest) error {
+func (m *MockUserService) Update(ctx context.Context, uuid string, req UserRequest) error {
 	return nil
 }
 
-func (m *MockUsersService) Delete(ctx context.Context, uuid string) error {
+func (m *MockUserService) Delete(ctx context.Context, uuid string) error {
 	return nil
 }
 
-type MockUsersRepository struct {
+type MockUserRepository struct {
 	CreateFunc  func(ctx context.Context, user *models.User) error
 	ReadOneFunc func(ctx context.Context, uuid string) (*models.User, error)
 	ReadAllFunc func(ctx context.Context, q dto.Query) ([]models.User, int, error)
@@ -39,7 +39,7 @@ type MockUsersRepository struct {
 	DeleteFunc  func(ctx context.Context, uuid string) error
 }
 
-func (m *MockUsersRepository) Create(ctx context.Context, user *models.User) error {
+func (m *MockUserRepository) Create(ctx context.Context, user *models.User) error {
 	if m.CreateFunc != nil {
 		return m.CreateFunc(ctx, user)
 	}
@@ -47,7 +47,7 @@ func (m *MockUsersRepository) Create(ctx context.Context, user *models.User) err
 	return nil
 }
 
-func (m *MockUsersRepository) ReadOne(ctx context.Context, uuid string) (*models.User, error) {
+func (m *MockUserRepository) ReadOne(ctx context.Context, uuid string) (*models.User, error) {
 	if m.ReadOneFunc != nil {
 		return m.ReadOneFunc(ctx, uuid)
 	}
@@ -55,7 +55,7 @@ func (m *MockUsersRepository) ReadOne(ctx context.Context, uuid string) (*models
 	return nil, nil
 }
 
-func (m *MockUsersRepository) ReadAll(ctx context.Context, q dto.Query) ([]models.User, int, error) {
+func (m *MockUserRepository) ReadAll(ctx context.Context, q dto.Query) ([]models.User, int, error) {
 	if m.ReadAllFunc != nil {
 		return m.ReadAllFunc(ctx, q)
 	}
@@ -63,7 +63,7 @@ func (m *MockUsersRepository) ReadAll(ctx context.Context, q dto.Query) ([]model
 	return nil, 0, nil
 }
 
-func (m *MockUsersRepository) Update(ctx context.Context, user *models.User) error {
+func (m *MockUserRepository) Update(ctx context.Context, user *models.User) error {
 	if m.UpdateFunc != nil {
 		return m.UpdateFunc(ctx, user)
 	}
@@ -71,7 +71,7 @@ func (m *MockUsersRepository) Update(ctx context.Context, user *models.User) err
 	return nil
 }
 
-func (m *MockUsersRepository) Delete(ctx context.Context, uuid string) error {
+func (m *MockUserRepository) Delete(ctx context.Context, uuid string) error {
 	if m.DeleteFunc != nil {
 		return m.DeleteFunc(ctx, uuid)
 	}

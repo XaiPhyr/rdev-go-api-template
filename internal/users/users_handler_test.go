@@ -12,10 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestUserHandlerw(t *testing.T) {
+func TestUserHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	mockSvc := &users.MockUsersService{}
+	mockSvc := &users.MockUserService{}
 	h := users.NewUserHandler(mockSvc)
 
 	successParseToken := func(token string) (int64, error) {
