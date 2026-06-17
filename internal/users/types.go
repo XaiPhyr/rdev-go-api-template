@@ -12,7 +12,7 @@ type UserRequest struct {
 }
 
 type UserResponse struct {
-	// struct for reponse goes here!
+	// struct for response goes here!
 }
 
 func (req UserRequest) ToModel(user *models.User) *models.User {
