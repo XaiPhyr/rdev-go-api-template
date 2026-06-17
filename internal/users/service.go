@@ -3,6 +3,7 @@ package users
 import (
 	"context"
 
+	"github.com/XaiPhyr/rdev-go-api-template/internal/audit_logs"
 	"github.com/XaiPhyr/rdev-go-api-template/internal/shared/dto"
 	"github.com/XaiPhyr/rdev-go-api-template/internal/shared/email"
 	"github.com/XaiPhyr/rdev-go-api-template/internal/shared/models"
@@ -26,13 +27,14 @@ type UserService interface {
 }
 
 type service struct {
-	r     UserRepository
-	es    email.EmailService
-	redis *redis.Client
+	r        UserRepository
+	es       email.EmailService
+	redis    *redis.Client
+	auditLog audit_logs.AuditLogService
 }
 
-func NewUserService(r UserRepository, es email.EmailService, redis *redis.Client) *service {
-	return &service{r: r, es: es, redis: redis}
+func NewUserService(r UserRepository, es email.EmailService, redis *redis.Client, auditLog audit_logs.AuditLogService) *service {
+	return &service{r: r, es: es, redis: redis, auditLog: auditLog}
 }
 
 func (s *service) Create(ctx context.Context, req UserRequest) error {
