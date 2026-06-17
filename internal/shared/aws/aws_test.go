@@ -17,6 +17,9 @@ func TestAWS(t *testing.T) {
 		}
 
 		svc, err := aws.NewAWSService("ap-southeast-1", "test-bucket", aws.WithS3Client(mockSvc))
+		if err != nil {
+			t.Errorf("expected no error, got %v", err)
+		}
 
 		url, err := svc.UploadToS3(context.Background(), "key-aws", []byte(`test-upload`))
 
