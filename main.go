@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 //go:embed cmd internal scripts compose.yaml config.sample.yaml go.mod .gitignore .github Dockerfile
@@ -41,6 +42,7 @@ func main() {
 	generateCmd := flag.NewFlagSet("generate", flag.ExitOnError)
 	domainFlag := generateCmd.String("d", "", "Domain name")
 	fileFlag := generateCmd.String("f", "", "File to generate (handler|service|repository|types|models)")
+	migrateFlag := generateCmd.Bool("migrate", false, "Automatically generate an .up.sql migration from Bun tags")
 
 	switch os.Args[1] {
 	case "init":
@@ -64,8 +66,21 @@ func main() {
 		}
 
 		if err := runCodeGenerator(*domainFlag, *fileFlag); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Generation Error: %v\n", err)
-			os.Exit(1)
+			if errors.Is(err, ErrDomainExists) && *migrateFlag {
+				fmt.Println("ℹ️  Domain directory already exists. Skipping scaffolding rewrite...")
+			} else {
+				fmt.Fprintf(os.Stderr, "❌ Generation Error: %v\n", err)
+				os.Exit(1)
+			}
+		}
+
+		if *migrateFlag {
+			fmt.Println("🗄️  Analyzing Bun tags to compile structural database migrations...")
+			if err := handleMigrationGeneration(".", *domainFlag); err != nil {
+				fmt.Printf("⚠️  Warning: Automated SQL migration skipped: %v\n", err)
+			} else {
+				fmt.Println("✨ Success! Timestamped SQL migration created inside /migrations")
+			}
 		}
 
 	default:
@@ -183,6 +198,56 @@ func processAndWriteFile(absDestPath, embeddedPath, newModule string) error {
 	return os.WriteFile(absDestPath, fileData, 0600)
 }
 
+func handleMigrationGeneration(targetDir, domainName string) error {
+	reg := regexp.MustCompile(`[^a-zA-Z0-9]+`)
+	cleanDomain := reg.ReplaceAllString(domainName, "")
+	cleanDomain = strings.ToLower(cleanDomain)
+
+	if cleanDomain == "" {
+		return fmt.Errorf("invalid domain name: resulting string after sanitization is empty")
+	}
+
+	modelFilePath := filepath.Join(targetDir, "internal", "shared", "models", cleanDomain+".go")
+	migrationsDir := filepath.Join(targetDir, "internal", "db", "migrations")
+
+	if _, err := os.Stat(modelFilePath); os.IsNotExist(err) {
+		return fmt.Errorf("models file mapping does not exist at %s", modelFilePath)
+	}
+
+	tableName, columns, err := ParseBunModels(modelFilePath)
+	if err != nil {
+		return fmt.Errorf("failed during AST parse cycle: %w", err)
+	}
+
+	if len(columns) == 0 {
+		return fmt.Errorf("no valid fields containing explicit 'bun' tags were identified")
+	}
+
+	if _, err := os.Stat(migrationsDir); err == nil {
+		files, err := os.ReadDir(migrationsDir)
+		if err == nil {
+			duplicateSuffix := fmt.Sprintf("_create_%s_table.up.sql", tableName)
+			for _, file := range files {
+				if !file.IsDir() && strings.HasSuffix(file.Name(), duplicateSuffix) {
+					fmt.Printf("ℹ️  Migration baseline for table '%s' already exists (%s). Skipping...\n", tableName, file.Name())
+					return nil
+				}
+			}
+		}
+	}
+
+	if err := os.MkdirAll(migrationsDir, 0750); err != nil {
+		return fmt.Errorf("unable to construct migrations path: %w", err)
+	}
+
+	timestamp := time.Now().Format("20060102150405")
+	migrationName := fmt.Sprintf("%s_create_%s_table.up.sql", timestamp, tableName)
+	fullMigrationPath := filepath.Join(migrationsDir, migrationName)
+
+	sqlContent := BuildSQLMigration(tableName, columns)
+	return os.WriteFile(fullMigrationPath, []byte(sqlContent), 0600)
+}
+
 func printScaffoldSuccess(targetDir, absTargetDir string) {
 	fmt.Printf("\n✨ Success! Project initialized in %s\n", absTargetDir)
 	fmt.Println("------------------------------------------------------------")
@@ -196,7 +261,7 @@ func printScaffoldSuccess(targetDir, absTargetDir string) {
 func printGlobalUsage() {
 	fmt.Println("Usage: rdev-go-api-template <command> [arguments]")
 	fmt.Println("\nAvailable Commands:")
-	fmt.Println("  init <module_name>              Scaffold a brand-new API repository structure")
-	fmt.Println("  generate -d <domain>            Generate core architectural domain components inside an existing project")
-	fmt.Println("  generate -d <domain> -f <file>  Generate a specific architectural component (handler|service|repository|types|models|tests)")
+	fmt.Println("  init <module_name>                     Scaffold a brand-new API repository structure")
+	fmt.Println("  generate -d <domain> [--migrate]       Generate domain components and optional SQL migration")
+	fmt.Println("  generate -d <domain> -f <file>         Generate a specific architectural component")
 }
