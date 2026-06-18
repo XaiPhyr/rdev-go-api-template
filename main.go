@@ -46,47 +46,61 @@ func main() {
 
 	switch os.Args[1] {
 	case "init":
-		if len(os.Args) < 3 {
-			fmt.Println("❌ Error: Missing module path argument.")
-			fmt.Println("💡 Usage: rdev-go-api-template init <new-module-path>")
-			os.Exit(1)
-		}
-		runProjectScaffolder(os.Args[2])
-
+		handleInitSubcommand(os.Args[2:])
 	case "generate":
-		err := generateCmd.Parse(os.Args[2:])
-		if err != nil {
-			os.Exit(1)
-		}
-
-		if err := validateGeneratorFlags(*domainFlag, *fileFlag); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			generateCmd.Usage()
-			os.Exit(1)
-		}
-
-		if err := runCodeGenerator(*domainFlag, *fileFlag); err != nil {
-			if errors.Is(err, ErrDomainExists) && *migrateFlag {
-				fmt.Println("ℹ️  Domain directory already exists. Skipping scaffolding rewrite...")
-			} else {
-				fmt.Fprintf(os.Stderr, "❌ Generation Error: %v\n", err)
-				os.Exit(1)
-			}
-		}
-
-		if *migrateFlag {
-			fmt.Println("🗄️  Analyzing Bun tags to compile structural database migrations...")
-			if err := handleMigrationGeneration(".", *domainFlag); err != nil {
-				fmt.Printf("⚠️  Warning: Automated SQL migration skipped: %v\n", err)
-			} else {
-				fmt.Println("✨ Success! Timestamped SQL migration created inside /migrations")
-			}
-		}
-
+		handleGenerateSubcommand(generateCmd, domainFlag, fileFlag, migrateFlag, os.Args[2:])
 	default:
 		fmt.Printf("❌ Error: Unknown sub-command '%s'\n", os.Args[1])
 		printGlobalUsage()
 		os.Exit(1)
+	}
+}
+
+func handleInitSubcommand(args []string) {
+	if len(args) < 1 {
+		fmt.Println("❌ Error: Missing module path argument.")
+		fmt.Println("💡 Usage: rdev-go-api-template init <new-module-path>")
+		os.Exit(1)
+	}
+	runProjectScaffolder(args[0])
+}
+
+func handleGenerateSubcommand(cmd *flag.FlagSet, domain *string, file *string, migrate *bool, args []string) {
+	if err := cmd.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	if err := validateGeneratorFlags(*domain, *file); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		cmd.Usage()
+		os.Exit(1)
+	}
+
+	executeCodeGeneration(*domain, *file, *migrate)
+	executeMigrationPipeline(*domain, *migrate)
+}
+
+func executeCodeGeneration(domain, file string, migrate bool) {
+	if err := runCodeGenerator(domain, file); err != nil {
+		if errors.Is(err, ErrDomainExists) && migrate {
+			fmt.Println("ℹ️  Domain directory already exists. Skipping scaffolding rewrite...")
+		} else {
+			fmt.Fprintf(os.Stderr, "❌ Generation Error: %v\n", err)
+			os.Exit(1)
+		}
+	}
+}
+
+func executeMigrationPipeline(domain string, migrate bool) {
+	if !migrate {
+		return
+	}
+
+	fmt.Println("🗄️  Analyzing Bun tags to compile structural database migrations...")
+	if err := handleMigrationGeneration(".", domain); err != nil {
+		fmt.Printf("⚠️  Warning: Automated SQL migration skipped: %v\n", err)
+	} else {
+		fmt.Println("✨ Success! Timestamped SQL migration created inside /migrations")
 	}
 }
 
@@ -199,10 +213,7 @@ func processAndWriteFile(absDestPath, embeddedPath, newModule string) error {
 }
 
 func handleMigrationGeneration(targetDir, domainName string) error {
-	reg := regexp.MustCompile(`[^a-zA-Z0-9]+`)
-	cleanDomain := reg.ReplaceAllString(domainName, "")
-	cleanDomain = strings.ToLower(cleanDomain)
-
+	cleanDomain := sanitizeDomainName(domainName)
 	if cleanDomain == "" {
 		return fmt.Errorf("invalid domain name: resulting string after sanitization is empty")
 	}
@@ -223,23 +234,46 @@ func handleMigrationGeneration(targetDir, domainName string) error {
 		return fmt.Errorf("no valid fields containing explicit 'bun' tags were identified")
 	}
 
-	if _, err := os.Stat(migrationsDir); err == nil {
-		files, err := os.ReadDir(migrationsDir)
-		if err == nil {
-			duplicateSuffix := fmt.Sprintf("_create_%s_table.up.sql", tableName)
-			for _, file := range files {
-				if !file.IsDir() && strings.HasSuffix(file.Name(), duplicateSuffix) {
-					fmt.Printf("ℹ️  Migration baseline for table '%s' already exists (%s). Skipping...\n", tableName, file.Name())
-					return nil
-				}
-			}
-		}
+	exists, err := migrationBaselineExists(migrationsDir, tableName)
+	if err == nil && exists {
+		return nil
 	}
 
 	if err := os.MkdirAll(migrationsDir, 0750); err != nil {
 		return fmt.Errorf("unable to construct migrations path: %w", err)
 	}
 
+	return writeMigrationFile(migrationsDir, tableName, columns)
+}
+
+func sanitizeDomainName(domainName string) string {
+	reg := regexp.MustCompile(`[^a-zA-Z0-9]+`)
+	clean := reg.ReplaceAllString(domainName, "")
+	return strings.ToLower(clean)
+}
+
+func migrationBaselineExists(migrationsDir, tableName string) (bool, error) {
+	if _, err := os.Stat(migrationsDir); os.IsNotExist(err) {
+		return false, nil
+	}
+
+	files, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		return false, err
+	}
+
+	duplicateSuffix := fmt.Sprintf("_create_%s_table.up.sql", tableName)
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), duplicateSuffix) {
+			fmt.Printf("ℹ️  Migration baseline for table '%s' already exists (%s). Skipping...\n", tableName, file.Name())
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func writeMigrationFile(migrationsDir, tableName string, columns []SQLColumn) error {
 	timestamp := time.Now().Format("20060102150405")
 	migrationName := fmt.Sprintf("%s_create_%s_table.up.sql", timestamp, tableName)
 	fullMigrationPath := filepath.Join(migrationsDir, migrationName)
