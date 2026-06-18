@@ -49,7 +49,7 @@ func setupUserRoutes(rg *gin.RouterGroup, repo users.UserRepository, authSvc aut
 	svc := users.NewUserService(repo, es, redis, auditLog)
 	h := users.NewUserHandler(svc)
 
-	route := rg.Group("/service_types")
+	route := rg.Group("/users")
 	route.Use(middleware.AuthRequired(authSvc))
 
 	route.GET("/:uuid", middleware.PermissionRequired(authSvc, "users:read"), h.ReadOne)
