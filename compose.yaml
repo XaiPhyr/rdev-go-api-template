@@ -19,7 +19,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    entrypoint: ["sh", "-c", "./migrate init || true && ./migrate up"]
+    command: ["migrate"] 
     env_file:
       - .env
     depends_on:
@@ -32,11 +32,11 @@ services:
     container_name: rdev-go-api-template-db
     image: postgres:17-alpine
     ports:
-      - "5431:5432"
+      - "5432:5432"
     env_file:
       - .env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-rdev-go-api-template_db}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 5

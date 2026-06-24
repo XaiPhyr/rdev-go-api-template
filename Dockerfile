@@ -12,18 +12,18 @@ COPY . .
 
 # Build the static binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/api
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o migrate ./cmd/migrate
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o migrate ./cmd/migration
 
 # STAGE 2: Run
 FROM alpine:latest
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata postgresql-client
 
 WORKDIR /root/
 
 # Copy binaries and config
 COPY --from=builder /app/main .
 COPY --from=builder /app/migrate .
-COPY --from=builder /app/internal/data ./internal/data
+COPY --from=builder /app/internal/db ./internal/db
 COPY --from=builder /app/config.docker.yaml ./config.yaml
 
 # Copy the entrypoint script from your local scripts folder
