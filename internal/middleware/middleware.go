@@ -3,8 +3,10 @@ package middleware
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/XaiPhyr/rdev-go-api-template/internal/auth"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
 )
@@ -20,6 +22,17 @@ func RateLimiter() gin.HandlerFunc {
 
 		ctx.Next()
 	}
+}
+
+func AllowCORS() gin.HandlerFunc {
+	return cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173", "http://127.0.0.1:5173"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	})
 }
 
 func AuthRequired(authSvc auth.AuthService) gin.HandlerFunc {

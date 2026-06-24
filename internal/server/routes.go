@@ -30,6 +30,7 @@ func Container(r *gin.Engine, db *bun.DB, redis *redis.Client, cfg *config.Confi
 
 	// @inject:repository
 
+	r.Use(middleware.AllowCORS())
 	apiVersion := r.Group(cfg.Server.Version)
 	apiVersion.Use(middleware.RateLimiter())
 
