@@ -28,6 +28,14 @@ func main() {
 	router.Use(gin.Recovery())
 	router.MaxMultipartMemory = 8 << 20
 
+	if err := router.SetTrustedProxies([]string{"127.0.0.1"}); err != nil {
+		log.Fatalf("failed to set trusted proxies: %v", err)
+	}
+
+	router.GET("/health", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{"message": "success"})
+	})
+
 	db := config.ConnectDB(cfg.Database)
 	redis := config.ConnectRedis(cfg.Redis)
 	server.Container(router, db, redis, cfg)
